@@ -1,0 +1,25 @@
+
+
+
+library(shiny)
+library(shinyFiles)
+library(BSgenome) # for mapping
+library(QuasR) # for mapping
+library(csaw)
+library(edgeR)
+library(GenomicAlignments)
+library(BayesPeak)
+library(ChIPseeker)
+library(GenomicFeatures)
+library(ggplot2)
+library(ggsignif)
+library(valr)
+library(reshape2) 
+library(circlize)
+library(EnrichedHeatmap)
+
+source("./functions/mapped_reads_processing.R")
+source("./functions/plots.R")
+source("./functions/peak_operations.R")
+source("./functions/mapping.R")
+source("./functions/heatmaps_and_metaplot.R")
