@@ -102,7 +102,3 @@ shinyUI(pageWithSidebar(
   
 ))
 
-# bookmarking
-# broad peaks option - merge peaks spacing less than X
-# try to remove GR objects upon peak calling
-# test if significance without peak intersection works
