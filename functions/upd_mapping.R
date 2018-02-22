@@ -47,3 +47,4 @@ preprocessing <- function(fastq_list,second_choice,truncateStartBases,truncateEn
   return(res)
 }
 
+
