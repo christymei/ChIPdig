@@ -132,8 +132,8 @@ edger_to_TMM <- function(edger) {
 coverages_function <- function(sample_list,TMM) {
   coverage_matrix <- matrix(0,nrow=nrow(TMM$counts),ncol=nrow(sample_list)*3)
   for (i in 1:nrow(sample_list)) {
-    coverage_matrix[,i*3-2] <- cpm(TMM[,i*2-1], normalized.lib.sizes=TRUE)
-    coverage_matrix[,i*3-1] <- cpm(TMM[,i*2-0], normalized.lib.sizes=TRUE)
+    coverage_matrix[,i*3-2] <- cpm(TMM[,i*2-1], normalized.lib.sizes=TRUE, log=TRUE, prior.count=0.25)
+    coverage_matrix[,i*3-1] <- cpm(TMM[,i*2-0], normalized.lib.sizes=TRUE, log=TRUE, prior.count=0.25)
     coverage_matrix[,i*3-0] <- coverage_matrix[,i*3-2] - coverage_matrix[,i*3-1]
   }
   colnames <- rep(NA,ncol(coverage_matrix))
@@ -283,7 +283,7 @@ peaks_import <- function(peaks_path) {
   return(peaks)
 }
 binranges_fun <- function(coverages,sample_list,contrast_test,contrast_ref,counts_subset) {
-  indexes_to_keep <- seq(3,ncol(coverages), by = 3)
+  indexes_to_keep <- seq(1,ncol(coverages), by = 3)
   coverages <- coverages[,indexes_to_keep]
   colnames(coverages) <- sample_list[,4]
   coverages_ref <- coverages[,which(colnames(coverages)==contrast_ref)]
@@ -297,53 +297,39 @@ binranges_fun <- function(coverages,sample_list,contrast_test,contrast_ref,count
   result <- cbind(binranges,FC)
   return(result)
 }
-final_diff_enrich_result_fun <- function(peaks,bins_with_FC_values,contrast_test,contrast_ref) {
+diff_enrich_tab_fun <- function(peaks,bins_with_FC_values,contrast_test,contrast_ref) {
   peaks_DF <- data.frame(chrom=seqnames(peaks),
                          start=start(peaks),
                          end=end(peaks),
                          PValue=elementMetadata(peaks)$PValue,
                          FDR=elementMetadata(peaks)$FDR)
-  peaks_DF_NA <- peaks_DF[!complete.cases(peaks_DF),]
-  peaks_DF <- peaks_DF[complete.cases(peaks_DF), ]
-  peaks_DF <- within(peaks_DF, peak_name <- seq(1,nrow(peaks_DF)))
-  final_result <- peaks_DF
-  final_result <- within(final_result, CPM_test <- NA)
-  final_result <- within(final_result, CPM_ref <- NA)
-  final_result <- within(final_result, overlap <- NA)
-  final_result_NA <- within(peaks_DF_NA, peak_name <- "Below treatment/control threshold")
-  final_result_NA <- within(final_result_NA, CPM_test <-  "Below treatment/control threshold")
-  final_result_NA <- within(final_result_NA, CPM_ref <- "Below treatment/control threshold")
-  final_result_NA <- within(final_result_NA, overlap <- "Below treatment/control threshold")
-  final_result_NA <- within(final_result_NA, FC <- "Below treatment/control threshold")
-  final_result_NA <- within(final_result_NA, PValue <- "Below treatment/control threshold")
-  final_result_NA <- within(final_result_NA, FDR <- "Below treatment/control threshold")
-  result <- bed_intersect(peaks_DF,bins_with_FC_values)
-  for (i in 1:nrow(peaks_DF)) {
-    temp <- subset(result, peak_name.x==peaks_DF[i,6])
-    colnames(temp)[(ncol(temp)-2):ncol(temp)] <- c( "CPM_test","CPM_ref","overlap")
-    final_result[i,7] <- as.numeric(colSums(temp[,(ncol(temp)-2)])) 
-    final_result[i,8] <- as.numeric(colSums(temp[,(ncol(temp)-1)]))
-    final_result[i,9] <- as.numeric(colSums(temp[,(ncol(temp)-0)]))
+  total_peak_count <- nrow(peaks_DF)
+  peaks_DF <- within(peaks_DF,peak_ID <- seq(1,total_peak_count))
+  peaks_DF <- bed_intersect(peaks_DF,bins_with_FC_values)
+  peaks_DF <- as.data.frame(peaks_DF)
+  colnames(peaks_DF) <- c("chrom","start","end","PValue","FDR","peakID","start","end","CPMt","CPMr","overlap")
+  peaks_DF <- peaks_DF[,c(1:6,9:11)]
+  for (i in 1:total_peak_count) {
+    peak_summary <- subset(peaks_DF,peakID==as.integer(i))
+    if (nrow(peak_summary)>1) {
+      peak_summary_init <- peak_summary
+      peak_summary <- within(peak_summary,prod_cov_test <- peak_summary[,7]*peak_summary[,9])
+      peak_summary <- within(peak_summary,prod_cov_ref <- peak_summary[,8]*peak_summary[,9])
+      peak_summary_final <- within(peak_summary_init,CPMt <- sum(peak_summary$prod_cov_test)/sum(peak_summary$overlap) )
+      peak_summary_final <- within(peak_summary_final,CPMr <- sum(peak_summary$prod_cov_ref)/sum(peak_summary$overlap) )
+      peak_summary_final <- within(peak_summary_final,overlap<- sum(peak_summary$overlap) )
+      peak_summary <- peak_summary_final[1,]
+    }
+    if (i==1) {
+      result <- peak_summary
+    } else {
+      result <- rbind(result,peak_summary)
+    }
   }
-  prior_test_plus <- min(final_result$CPM_test[is.finite(final_result$CPM_test)&final_result$CPM_test>0])
-  prior_ref_plus <- min(final_result$CPM_ref[is.finite(final_result$CPM_ref)&final_result$CPM_ref>0])
-  prior_test_minus <- max(final_result$CPM_test[is.finite(final_result$CPM_test)&final_result$CPM_test<0])
-  prior_ref_minus <- max(final_result$CPM_ref[is.finite(final_result$CPM_ref)&final_result$CPM_ref<0])
-  final_result <- within(final_result, FC <- NA)
-  final_result <- within(final_result, FC <- ifelse(CPM_ref*CPM_test>0,ifelse(CPM_test>0,CPM_test/CPM_ref,CPM_ref/CPM_test),FC))
-  final_result <- within(final_result, FC <- ifelse(CPM_ref*CPM_test<0,ifelse(CPM_ref<0,-(CPM_test-CPM_ref)/CPM_ref,-CPM_test/(CPM_ref-CPM_test)),FC))
-  final_result <- within(final_result, FC <- ifelse(CPM_ref==0&CPM_test==0,1,FC))
-  final_result <- within(final_result, FC <- ifelse(CPM_ref==0&CPM_test>0,CPM_test/prior_ref_plus,FC))
-  final_result <- within(final_result, FC <- ifelse(CPM_ref==0&CPM_test<0,prior_ref_minus/CPM_test,FC))
-  final_result <- within(final_result, FC <- ifelse(CPM_ref>0&CPM_test==0,prior_test_plus/CPM_ref,FC))
-  final_result <- within(final_result, FC <- ifelse(CPM_ref<0&CPM_test==0,CPM_ref/prior_test_minus,FC))  
-  final_result <- within(final_result, CPM_test <- round(CPM_test,2))
-  final_result <- within(final_result, CPM_ref <- round(CPM_ref,2))
-  final_result <- within(final_result, FC <- round(FC,2))
-  final_result <- final_result[order(final_result$FDR),]
-  final_result <- rbind(final_result,final_result_NA)
-  final_result <- final_result[,c(1,2,3,4,5,7,8,10)]
-  colnames(final_result) <- c("Chromosome","Start","End","P value","FDR",paste("CPM",contrast_test),paste("CPM",contrast_ref),"Fold Change")
-  return(final_result)
+  result <- result[,c(1:5,7:8)]
+  colnames(result) <- c("Chromosome","Start","End","P value","FDR",paste("Average Log2 CPM per bin,",contrast_test),paste("Average Log2 CPM per bin,",contrast_ref))
+  result <- within(result,FC<-result[,6]-result[,7])
+  colnames(result)[8] <- "Fold enrichment"
+  return(result)
 }
 
