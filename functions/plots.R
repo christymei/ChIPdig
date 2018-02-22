@@ -26,7 +26,7 @@ diff_result_plot <- function(results,FDR_threshold, string_test,string_ref) {
     diff_result_table[,i] <- as.numeric(as.character(diff_result_table[,i]))
   }
   diff_result_table <-  within(diff_result_table, sign <- ifelse(FDR<FDR_threshold,1,0))
-  diff_result_table <-  within(diff_result_table, class <- ifelse(sign==0,"not changing",ifelse(diff_result_table[,8]>1,"enriched",ifelse(diff_result_table[,8]<1,"depleted","not changing"))))
+  diff_result_table <-  within(diff_result_table, class <- ifelse(sign==0,"not changing",ifelse(diff_result_table[,8]>0,"enriched",ifelse(diff_result_table[,8]<0,"depleted","not changing"))))
   diff_result_table$class <- factor(diff_result_table$class, levels = c("enriched", "depleted", "not changing"))
   diff_result_table$class[is.na(diff_result_table$class)] <- "not changing"
   colvector <- c("red","blue","black") 
@@ -65,9 +65,7 @@ diff_result_plot <- function(results,FDR_threshold, string_test,string_ref) {
   }
   colnames(diff_result_table)[8] <- "FC"
   diff_result_table <- within(diff_result_table, Average_CPM <- (diff_result_table[,6] + diff_result_table[,7])/2)
-  prior <- 0.01
-  diff_result_table <- within(diff_result_table, FC <- ifelse(FC==0,log2(prior),log2(FC)))
-  p <- ggplot(diff_result_table,aes(x=Average_CPM, y=FC,group=class)) + geom_point(aes(color=class)) + scale_color_manual(values=colvector)  + labs(x=paste("Average CPM",string_test, "&",string_ref, sep = " "),y=paste("Log2 FC",string_test, "vs",string_ref, sep = " ")) + theme_bw() +
+  p <- ggplot(diff_result_table,aes(x=Average_CPM, y=FC,group=class)) + geom_point(aes(color=class)) + scale_color_manual(values=colvector)  + labs(x=paste("Average Log2 CPM",string_test, "&",string_ref, sep = " "),y=paste("Log2 Fold Enrichment",string_test, "vs",string_ref, sep = " ")) + theme_bw() +
     theme(panel.border = element_rect(colour = "black"), panel.grid.major = element_line(colour = "gray88"),
           panel.grid.minor = element_blank(), legend.title =  element_blank(),legend.text = element_text(size=16),
           axis.text.x = element_text(size=16),axis.text.y = element_text(size=16),
@@ -75,7 +73,7 @@ diff_result_plot <- function(results,FDR_threshold, string_test,string_ref) {
   print(p)
 } 
 quantiles_95 <- function(x) {
-  r <- quantile(x, probs=c(0.05, 0.25, 0.5, 0.75, 0.95))
+  r <- quantile(x, probs=c(0.05, 0.25, 0.5, 0.75, 0.95), na.rm = T)
   names(r) <- c("ymin", "lower", "middle", "upper", "ymax")
   r
 }
@@ -87,7 +85,7 @@ boxplot_Q95 <- function(results,string_test,string_ref) {
   colnames(diff_result_table) <- c("CPM", "condition" )
   diff_result_table$condition <- factor(diff_result_table$condition, levels = c(string_ref, string_test))
   diff_result_table$CPM <- as.numeric(as.character(diff_result_table$CPM))
-  p <- ggplot(diff_result_table,aes(x=condition, y=CPM)) + stat_summary(fun.data = quantiles_95, geom="boxplot") +  labs(x="",y="Median CPM") + scale_y_continuous(expand=c(0.1,0)) +
+  p <- ggplot(diff_result_table,aes(x=condition, y=CPM)) + stat_summary(fun.data = quantiles_95, geom="boxplot") +  labs(x="",y="Median Log2 CPM") + scale_y_continuous(expand=c(0.1,0)) +
     theme_bw() + theme(panel.border = element_rect(colour = "black"), panel.grid.major = element_line(colour = "gray88"),panel.grid.minor = element_blank(),
                        axis.text.x = element_text(size=16),axis.text.y = element_text(size=16), legend.title =  element_blank(),legend.text = element_text(size=16),
                        axis.title.x = element_text(size=16,face = "bold"),axis.title.y = element_text(size=16,face = "bold")) +
@@ -95,3 +93,4 @@ boxplot_Q95 <- function(results,string_test,string_ref) {
   print(p)
   return(diff_result_table)
 }
+
