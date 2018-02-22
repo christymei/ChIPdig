@@ -125,7 +125,7 @@ shinyServer(function(input,output,session){
       sample_list <- sample_list_import(sample_list_path)
       output$sample_list <- renderTable(sample_list)
       rv$sample_list <- sample_list
-      output$dupl_reads_remove <- renderUI(checkboxInput("dupl_reads_remove", "Remove duplicate reads (for differential enrichment analysis, previous marking of duplicate reads, e.g. with Picard tools, is required)" , value = FALSE))
+      output$dupl_reads_remove <- renderUI(checkboxInput("dupl_reads_remove", "Remove duplicate reads" , value = FALSE))
       output$process_reads <- renderUI(actionButton("process_reads", "Load mapped read files"))
       output$process_reads_note <- renderUI("NOTE: Loading may take a while. Be patient.")
       output$bin_size <- renderUI(numericInput("bin_size", "Bin size (bp):", 50, min = 25)) 
@@ -555,7 +555,7 @@ shinyServer(function(input,output,session){
     mcols(peaks) <- tabbroad
     coverages_for_plot <- coverages_function(sample_list,edger_subset)
     binranges <- binranges_fun(coverages_for_plot, sample_list, contrast_test,contrast_ref, counts_subset)
-    results <- final_diff_enrich_result_fun(peaks,binranges,contrast_test,contrast_ref)
+    results <- diff_enrich_tab_fun(peaks,binranges,contrast_test,contrast_ref)
     output$results_plot <- renderPlot(diff_result_plot(results,input$FDR,contrast_test,contrast_ref))  
     output$results_plot_download <- downloadHandler(
       filename <- function() {
@@ -566,7 +566,7 @@ shinyServer(function(input,output,session){
         print(diff_result_plot(results,input$FDR,contrast_test,contrast_ref))
         dev.off()
       }
-    )
+    )    
     output$boxplot_Q95 <- renderPlot(boxplot_Q95(results,contrast_test,contrast_ref))
     output$boxplot_Q95_download <- downloadHandler(
       filename <- function() {
