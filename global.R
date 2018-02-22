@@ -1,6 +1,3 @@
-
-
-
 library(shiny)
 library(shinyFiles)
 library(BSgenome) # for mapping
