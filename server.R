@@ -13,7 +13,7 @@ shinyServer(function(input,output,session){
   directory <- reactive(input$dir)
   
   # initial instruction
-  output$text1 <- renderUI(h3("ChIPdig provides a user-friendly interface for analyzing multi-sample ChIP-seq data using using packages implemented in R. First, select the analysis module in the left pane and the input directory containing the files to be analyzed."))
+  output$text1 <- renderUI(h3("ChIPdig provides a user-friendly interface for analyzing multi-sample ChIP-seq data using packages implemented in R. First, select the analysis module in the left pane and the input directory containing the files to be analyzed."))
   
   # loading of user input options
   observeEvent(input$first_choice, {
